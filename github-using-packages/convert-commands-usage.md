@@ -1,15 +1,15 @@
-# github-using-packages
+# convert-commands 使用说明
 
-本目录包含将 `commands/` 目录中的 Slash Command 文件转换为 GitHub Copilot Prompt 文件（`*.prompt.md`）的脚本，以及转换结果输出目录 `prompts/`。
+本文件说明如何使用 `convert-commands.ps1` 将 `commands/` 目录中的 Slash Command Markdown 文件转换为 GitHub Copilot Prompt 文件（`*.prompt.md`），并说明 frontmatter 字段处理规则。
 
 ---
 
-## 目录结构
+## 目录结构（示例）
 
 ```
 github-using-packages/
 ├── convert-commands.ps1   # 转换脚本（PowerShell）
-├── README.MD              # 本文档
+├── convert-commands-usage.md  # 本使用说明
 └── prompts/               # 输出目录，存放 *.prompt.md 文件
 ```
 
@@ -71,39 +71,19 @@ GitHub Copilot Prompt 文件支持的 frontmatter 字段：`name`、`description
 
 ---
 
-## 生成此脚本的提示词（优化版）
+## 示例：转换目标路径说明
 
-以下提示词可直接交给任何 LLM，用于重新生成或修改 `convert-commands.ps1`：
+脚本默认将输出写入 `./prompts/`（相对于脚本所在目录），因此在 `github-using-packages/` 下运行可生成 `github-using-packages/prompts/`。
 
 ---
 
-```
-将 ./commands 目录下的所有 *.md 文件转换并输出到 ./github-using-packages/prompts/，要求：
+## 运行脚本后验证（建议）
 
-1. **文件命名**：目标文件后缀改为 .prompt.md，文件名其余部分不变。
-   示例：commands/e2e.md → github-using-packages/prompts/e2e.prompt.md
-
-2. **YAML frontmatter — name 字段**：
-   在 frontmatter 第一行插入 `name: <文件名（不含扩展名）>`。
-
-3. **YAML frontmatter — description 字段**：
-   在 name 字段的下一行插入 `description: <中文描述>`，按以下优先级取值：
-   a. 读取 docs/zh-CN/commands/<name>.md 的 YAML frontmatter description 字段（首选，已是中文）。
-   b. 若 zh-CN 文件存在但无 frontmatter，则取其 H1 标题下的第一段落文字（仍为中文）。
-   c. 若 zh-CN 文件不存在，查内置翻译表（$KnownTranslations）。
-   d. 若翻译表中也无，取源文件的 description 字段值（英文，注明需后续翻译）。
-   e. 若源文件无 frontmatter，取其 H1 标题下第一段落（英文，注明需后续翻译）。
-   f. 兜底使用文件名作为 description。
-
-4. **清理空行**：删除 frontmatter 结束符 `---` 前的所有空行，确保最后一个字段与 `---` 之间没有空行。
-
-5. **保留其余字段**：frontmatter 中 name 和 description 之外的其他字段原样保留（置于 description 之后）。
-
-6. **行尾规范化**：处理 CRLF/LF 混用问题，输出统一使用 LF（Unix 换行），UTF-8 无 BOM 编码。
-
-7. **幂等执行**：每次运行前清空目标目录中的 *.prompt.md 文件，再重新生成。
-
-实现语言：PowerShell 5.1，脚本放置于 github-using-packages/ 目录，通过相对路径引用源目录和 zh-CN 目录。
+```powershell
+Get-ChildItem .\prompts -Filter "*.prompt.md" | Select-Object -First 20
+Select-String -Path "commands\*.md" -Pattern "allowed_tools|command|disable-model-invocation" -SimpleMatch
 ```
 
 ---
+
+如果需要我同时把 `README.MD` 删除或保留为索引文件，请告诉我。
