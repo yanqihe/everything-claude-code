@@ -99,15 +99,17 @@ Write-Host "══════════════════════�
 
 try {
 
-    # ── 步骤 2：git merge upstream/main ───────────────────────────────────────
-    Write-Step 2 "获取最新代码: git merge upstream/main"
+    # ── 步骤 2：git fetch upstream + merge ───────────────────────────────────
+    Write-Step 2 "获取最新代码: git fetch upstream && git merge upstream/main"
     Push-Location $RepoRoot
     try {
+        Invoke-Git "fetch", "upstream"
         Invoke-Git "merge", "upstream/main"
+        Invoke-Git "push", "origin", "main"
     } finally {
         Pop-Location
     }
-    Write-Ok "merge 完成"
+    Write-Ok "fetch + merge + push 完成"
 
     # ── 步骤 3：执行 convert-commands.ps1 ────────────────────────────────────
     Write-Step 3 "执行 convert-commands.ps1"
