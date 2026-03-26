@@ -13,7 +13,7 @@
 | # | 操作 | 说明 |
 |---|------|------|
 | 1 | — | 脚本保存在 `./github-using-packages` 下 |
-| 2 | `git fetch upstream` + `git merge upstream/main` + `git push origin main` | 从远程拉取上游最新代码、合并并推送到个人仓库 |
+| 2 | `git fetch upstream` + `git rebase upstream/main` + `git push --force-with-lease origin main` | 拉取上游最新代码 → 将本地独有 commits rebasing 到最新上游之上 → 安全强制推送到个人仓库（无 merge commit） |
 | 3 | 执行 `convert-commands.ps1` | 将 `./commands/*.md` 转换为 `./github-using-packages/prompts/*.prompt.md` |
 | 4 | 备份 `.claude` → `.claude_back` | 先删除旧备份，再全量备份当前 `.claude` |
 | 5 | 清空 `.claude` | 删除 `.claude` 目录下所有文件及子目录 |
