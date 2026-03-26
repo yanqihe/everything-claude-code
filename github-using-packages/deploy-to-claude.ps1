@@ -105,14 +105,14 @@ Write-Host "══════════════════════�
 
 try {
 
-    # ── 步骤 2：git fetch upstream + fetch origin + rebase + force push ──────────
+    # ── 步骤 2：git fetch upstream + rebase --onto + force push ──────────────────
     # 目标：保持 origin/main 线性，无 merge commit，GitHub 无 "Sync fork" 提示
-    Write-Step 2 "同步上游: git fetch upstream && git fetch origin && git rebase upstream/main && git push --force origin main"
+    # 使用 --onto upstream/main --root 将所有本地 commits 放到 upstream 之上
+    Write-Step 2 "同步上游: git fetch upstream && git rebase --onto upstream/main --root && git push --force origin main"
     Push-Location $RepoRoot
     try {
         Invoke-Git "fetch", "upstream"
-        Invoke-Git "fetch", "origin"
-        Invoke-Git "rebase", "upstream/main"
+        Invoke-Git "rebase", "--onto", "upstream/main", "--root"
         Invoke-Git "push", "--force", "origin", "main"
     } finally {
         Pop-Location
