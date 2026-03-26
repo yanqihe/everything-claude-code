@@ -44,11 +44,17 @@ function Write-Ok   { param([string]$Msg) Write-Host "    OK  $Msg" -ForegroundC
 function Write-Warn { param([string]$Msg) Write-Host "    WARN $Msg" -ForegroundColor Yellow }
 function Write-Err  { param([string]$Msg) Write-Host "    ERR  $Msg" -ForegroundColor Red    }
 
-# 执行 git 命令并在失败时抛出异常
+# 执行 git 命令，失败时最多重试一次（处理网络抖动）
 function Invoke-Git {
-    param([string[]]$GitArgs)
+    param([string[]]$GitArgs, [switch]$NoRetry)
     & git @GitArgs
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne 0 -and -not $NoRetry) {
+        # 网络类错误重试一次
+        & git @GitArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "git $($GitArgs -join ' ') 失败，退出码: $LASTEXITCODE"
+        }
+    } elseif ($LASTEXITCODE -ne 0) {
         throw "git $($GitArgs -join ' ') 失败，退出码: $LASTEXITCODE"
     }
 }
@@ -100,12 +106,12 @@ Write-Host "══════════════════════�
 try {
 
     # ── 步骤 2：git fetch upstream + rebase + force push ──────────────────────
-    Write-Step 2 "同步上游: git fetch upstream && git rebase upstream/main && git push --force-with-lease origin main"
+    Write-Step 2 "同步上游: git fetch upstream && git rebase upstream/main && git push --force origin main"
     Push-Location $RepoRoot
     try {
         Invoke-Git "fetch", "upstream"
         Invoke-Git "rebase", "upstream/main"
-        Invoke-Git "push", "--force-with-lease", "origin", "main"
+        Invoke-Git "push", "--force", "origin", "main"
     } finally {
         Pop-Location
     }
