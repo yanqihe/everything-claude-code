@@ -105,17 +105,19 @@ Write-Host "══════════════════════�
 
 try {
 
-    # ── 步骤 2：git fetch upstream + rebase + force push ──────────────────────
-    Write-Step 2 "同步上游: git fetch upstream && git rebase upstream/main && git push --force origin main"
+    # ── 步骤 2：git fetch upstream + fetch origin + rebase + force push ──────────
+    # 目标：保持 origin/main 线性，无 merge commit，GitHub 无 "Sync fork" 提示
+    Write-Step 2 "同步上游: git fetch upstream && git fetch origin && git rebase upstream/main && git push --force origin main"
     Push-Location $RepoRoot
     try {
         Invoke-Git "fetch", "upstream"
+        Invoke-Git "fetch", "origin"
         Invoke-Git "rebase", "upstream/main"
         Invoke-Git "push", "--force", "origin", "main"
     } finally {
         Pop-Location
     }
-    Write-Ok "rebase + force push 完成"
+    Write-Ok "fetch + rebase + force push 完成"
 
     # ── 步骤 3：执行 convert-commands.ps1 ────────────────────────────────────
     Write-Step 3 "执行 convert-commands.ps1"
