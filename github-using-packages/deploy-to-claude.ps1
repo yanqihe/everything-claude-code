@@ -105,19 +105,31 @@ Write-Host "══════════════════════�
 
 try {
 
-    # ── 步骤 2：git fetch upstream + rebase --onto + force push ──────────────────
+    # ── 步骤 2：git fetch upstream + rebase + force push（rebase 失败时 fallback merge） ──
     # 目标：保持 origin/main 线性，无 merge commit，GitHub 无 "Sync fork" 提示
-    # 使用 --onto upstream/main --root 将所有本地 commits 放到 upstream 之上
+    # 优先尝试 rebase --onto --root 保持线性历史；若 rebase 有冲突则自动 merge
     Write-Step 2 "同步上游: git fetch upstream && git rebase --onto upstream/main --root && git push --force origin main"
     Push-Location $RepoRoot
     try {
         Invoke-Git "fetch", "upstream"
+
+        # 尝试 rebase（保持线性历史）
         Invoke-Git "rebase", "--onto", "upstream/main", "--root"
         Invoke-Git "push", "--force", "origin", "main"
+
+        # 检查 rebase 后 main 是否领先 upstream，若无进展则 fallback 到 merge
+        $ahead = git rev-list --count "upstream/main..main"
+        if ([int]$ahead -eq 0) {
+            Write-Host "    rebase 未产生新的领先 commit，执行 merge fallback..." -ForegroundColor Yellow
+            Invoke-Git "merge", "upstream/main", "-m", "Merge upstream/main into origin"
+            Invoke-Git "push", "--force", "origin", "main"
+            Write-Ok "fetch + merge(fallback) + force push 完成"
+        } else {
+            Write-Ok "fetch + rebase + force push 完成"
+        }
     } finally {
         Pop-Location
     }
-    Write-Ok "fetch + rebase + force push 完成"
 
     # ── 步骤 3：执行 convert-commands.ps1 ────────────────────────────────────
     Write-Step 3 "执行 convert-commands.ps1"
