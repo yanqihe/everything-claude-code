@@ -1,5 +1,6 @@
 ﻿# deploy-to-claude.ps1
 # 将最新配置发布到 C:\Users\heyan\.claude
+# 项目地址: https://github.com/xiaofenghe/everything-claude-code
 #
 # 执行步骤：
 #   1. git merge upstream/main 获取最新代码

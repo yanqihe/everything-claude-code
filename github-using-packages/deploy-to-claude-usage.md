@@ -2,6 +2,8 @@
 
 将仓库最新配置一键发布到 `C:\Users\heyan\.claude` 的自动化脚本。
 
+> **项目地址**: https://github.com/xiaofenghe/everything-claude-code
+
 ## 脚本位置
 
 ```
