@@ -1,9 +1,9 @@
-﻿# deploy-to-claude.ps1
+# deploy-to-claude.ps1
 # 将最新配置发布到 C:\Users\heyan\.claude
 # 项目地址: https://github.com/xiaofenghe/everything-claude-code
 #
 # 执行步骤：
-#   1. git merge upstream/main 获取最新代码
+#   1. git fetch upstream + merge upstream/main（优先 merge，避免 rebase 冲突）
 #   2. 执行 convert-commands.ps1 生成 prompts
 #   3. 备份 .claude → .claude_back
 #   4. 清空 .claude 目录
@@ -106,27 +106,38 @@ Write-Host "══════════════════════�
 
 try {
 
-    # ── 步骤 2：git fetch upstream + rebase + force push（rebase 失败时 fallback merge） ──
-    # 目标：保持 origin/main 线性，无 merge commit，GitHub 无 "Sync fork" 提示
-    # 优先尝试 rebase --onto --root 保持线性历史；若 rebase 有冲突则自动 merge
-    Write-Step 2 "同步上游: git fetch upstream && git rebase --onto upstream/main --root && git push --force origin main"
+    # ── 步骤 2：git fetch upstream + merge ─────────────────────────────────────────
+    # 优先使用 merge 避免 rebase 冲突；如存在未解决冲突则跳过 sync
+    Write-Step 2 "同步上游: git fetch upstream && git merge upstream/main"
     Push-Location $RepoRoot
     try {
         Invoke-Git "fetch", "upstream"
 
-        # 尝试 rebase（保持线性历史）
-        Invoke-Git "rebase", "--onto", "upstream/main", "--root"
-        Invoke-Git "push", "--force", "origin", "main"
+        # 检查是否有未解决的冲突标记文件
+        $conflictMarkers = Get-ChildItem -Path $RepoRoot -Filter "*.orig" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+        $hasConflict = Test-Path (Join-Path $RepoRoot ".git\MERGE_HEAD")
 
-        # 检查 rebase 后 main 是否领先 upstream，若无进展则 fallback 到 merge
-        $ahead = git rev-list --count "upstream/main..main"
-        if ([int]$ahead -eq 0) {
-            Write-Host "    rebase 未产生新的领先 commit，执行 merge fallback..." -ForegroundColor Yellow
-            Invoke-Git "merge", "upstream/main", "-m", "Merge upstream/main into origin"
-            Invoke-Git "push", "--force", "origin", "main"
-            Write-Ok "fetch + merge(fallback) + force push 完成"
+        if ($hasConflict) {
+            Write-Host "    检测到 MERGE_HEAD（存在未解决的 merge 冲突）" -ForegroundColor Yellow
+            Write-Host "    跳过 git sync 步骤（请手动解决冲突后重试）" -ForegroundColor Yellow
+            Write-Ok "sync 已跳过（冲突待解决）"
         } else {
-            Write-Ok "fetch + rebase + force push 完成"
+            try {
+                Invoke-Git "merge", "upstream/main", "-m", "Merge upstream/main into origin/main"
+                Write-Ok "fetch + merge 完成"
+            } catch {
+                # merge 失败（可能是冲突），检查是否已有 merge conflict
+                $mergeConflict = & git diff --name-only --diff-filter=U 2>$null
+                if ($mergeConflict) {
+                    Write-Warn "merge 存在冲突: $mergeConflict"
+                    Write-Host "    跳过 git sync 步骤（请手动解决冲突后重试）" -ForegroundColor Yellow
+                    Write-Ok "sync 已跳过（冲突待解决）"
+                } else {
+                    throw $_.Exception.Message
+                }
+            }
+            # push（如果 merge 成功或无冲突）
+            Invoke-Git "push", "origin", "main"
         }
     } finally {
         Pop-Location
@@ -206,10 +217,11 @@ try {
     Write-Step 10 "复制 ./autoresearch → .claude/skills/autoresearch"
     $srcAutoresearch = Join-Path $RepoRoot "autoresearch"
     if (-not (Test-Path $srcAutoresearch)) {
-        throw "源目录不存在: $srcAutoresearch"
+        Write-Warn "源目录不存在: $srcAutoresearch，跳过"
+    } else {
+        Copy-Item -Path $srcAutoresearch -Destination (Join-Path $ClaudeDir "skills\autoresearch") -Recurse -Force
+        Write-Ok "autoresearch 复制完成"
     }
-    Copy-Item -Path $srcAutoresearch -Destination (Join-Path $ClaudeDir "skills\autoresearch") -Recurse -Force
-    Write-Ok "autoresearch 复制完成"
 
     # ── 步骤 11：复制 user-CLAUDE.md → CLAUDE.md ─────────────────────────────
     Write-Step 11 "复制 ./examples/user-CLAUDE.md → .claude/CLAUDE.md"
