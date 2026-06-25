@@ -1,4 +1,4 @@
-# deploy-to-claude.ps1
+﻿# deploy-to-claude.ps1
 # 将最新配置发布到 C:\Users\heyan\.claude
 # 项目地址: https://github.com/xiaofenghe/everything-claude-code
 #
