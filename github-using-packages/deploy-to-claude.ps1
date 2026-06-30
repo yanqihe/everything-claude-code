@@ -4,10 +4,15 @@
 #
 # 执行步骤：
 #   1. git fetch upstream + merge upstream/main（优先 merge，避免 rebase 冲突）
+#      默认会执行 git push origin main；在无人值守/无 HTTPS 凭据场景下可传 -SkipPush 跳过
 #   2. 执行 convert-commands.ps1 生成 prompts
 #   3. 备份 .claude → .claude_back
 #   4. 清空 .claude 目录
 #   5. 复制 agents / prompts / rules / skills / autoresearch / user-CLAUDE.md
+#
+# 用法示例：
+#   .\deploy-to-claude.ps1              # 交互/已配置凭据时使用，会 push
+#   .\deploy-to-claude.ps1 -SkipPush    # 无人值守 cron 任务，跳过 git push
 #
 # 回退策略（步骤 2~11 任意失败）：
 #   - 若备份已创建且 .claude 已被清空，从 .claude_back 还原 .claude
@@ -15,7 +20,10 @@
 
 #Requires -Version 5.1
 [CmdletBinding()]
-param()
+param(
+    [Parameter()]
+    [switch]$SkipPush
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -136,8 +144,12 @@ try {
                     throw $_.Exception.Message
                 }
             }
-            # push（如果 merge 成功或无冲突）
-            Invoke-Git "push", "origin", "main"
+            # push（如果 merge 成功且无冲突，且未指定 -SkipPush）
+            if (-not $SkipPush) {
+                Invoke-Git "push", "origin", "main"
+            } else {
+                Write-Warn "已跳过 git push（-SkipPush）"
+            }
         }
     } finally {
         Pop-Location
